@@ -230,7 +230,8 @@ The question is: How many ways can $2 be made using any number of coins?
 
 def coin_sum(total):
     # Variables for the numbers of each coin denomination
-    p,n,d,q,f,d = Ints('p n d q f d')
+    # penny, nickle, dime, quarter, fifty cent coin, dollar coin
+    p,n,d,q,f,c = Ints('p n d q f c')
 
     """
     Print the number of ways the $2 can be made using any number of the above coins.

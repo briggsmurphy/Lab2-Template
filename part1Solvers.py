@@ -125,7 +125,8 @@ def proof_by_unsat():
     x,y = Ints('x y')
     s = Solver()
 
-    # TODO: YOUR CODE HERE
+    f = Implies(y>0, x+y>x)
+    s.add(Not(f))
 
     match s.check():
         case z3.unsat:
@@ -140,11 +141,17 @@ def demorgans_proof():
     demorgan = And(p, q) == Not(Or(Not(p), Not(q)))
 
     def prove(f):
-        """
-        Print "No counterexample can be found, therefore the statement is true" if the given formula f is true, otherwise print "The formula f is false, with counterexample given by: " and the model that shows the formula to be false.
-        """
-        # TODO: YOUR CODE HERE
-        pass
+        s = Solver()
+
+        s.add(Not(f))
+
+        match s.check():
+            case z3.unsat:
+                print("No counterexample can be found, therefore the statement is true")
+
+            case z3.sat:
+                print("The formula is false, with counterexample given by:")
+                print(s.model())
 
     prove(demorgan)
 
@@ -175,7 +182,48 @@ def wedding_planning():
     or
         "There is no acceptable seating arraignment"
     """
-    #TODO: YOUR CODE HERE
+    alice = Int('alice')
+    bob = Int('bob')
+    charlie = Int('charlie')
+
+    s = Solver()
+
+    # valid seat numbers
+    s.add(alice >= 0, alice <= 2)
+    s.add(bob >= 0, bob <= 2)
+    s.add(charlie >= 0, charlie <= 2)
+
+    # everyone in different seats
+    s.add(Distinct(alice, bob, charlie))
+
+    # Alice not next to Charlie
+    s.add(Not(Or(alice - charlie == 1,
+                 alice - charlie == -1)))
+
+    # Alice not on left
+    s.add(alice != 0)
+
+    # Bob not to the right of Charlie
+    s.add(bob <= charlie)
+
+    if s.check() == z3.sat:
+
+        model = s.model()
+
+        positions = ["left", "middle", "right"]
+
+        arrangement = {}
+
+        arrangement[model[alice].as_long()] = "Alice"
+        arrangement[model[bob].as_long()] = "Bob"
+        arrangement[model[charlie].as_long()] = "Charlie"
+
+        print(f"{arrangement[0]} sits on the left, "
+              f"{arrangement[1]} in the middle, "
+              f"and {arrangement[2]} on the right.")
+
+    else:
+        print("There is no acceptable seating arraignment")
 
 
 
@@ -202,7 +250,64 @@ def sudoku(puzzle):
     """
     Use print_sudoku to print your solution to puzzle or otherwise print "The puzzle is impossible.".
     """
-    #TODO: YOUR CODE HERE
+    s = Solver()
+
+    # Create 9x9 grid of integer variables
+    cells = [[Int(f"cell_{r}_{c}") for c in range(9)] for r in range(9)]
+
+    # Each cell contains 1-9
+    for r in range(9):
+        for c in range(9):
+            s.add(cells[r][c] >= 1,
+                  cells[r][c] <= 9)
+
+    # Rows contain unique digits
+    for r in range(9):
+        s.add(Distinct(cells[r]))
+
+    # Columns contain unique digits
+    for c in range(9):
+        s.add(Distinct([cells[r][c] for r in range(9)]))
+
+    # 3x3 boxes contain unique digits
+    for box_r in range(3):
+        for box_c in range(3):
+
+            box = []
+
+            for r in range(3):
+                for c in range(3):
+                    box.append(cells[3*box_r + r][3*box_c + c])
+
+            s.add(Distinct(box))
+
+    # Add puzzle clues
+    for r in range(9):
+        for c in range(9):
+
+            if puzzle[r][c] != 0:
+                s.add(cells[r][c] == puzzle[r][c])
+
+    # Solve
+    if s.check() == z3.sat:
+
+        model = s.model()
+
+        solved = []
+
+        for r in range(9):
+
+            row = []
+
+            for c in range(9):
+                row.append(model[cells[r][c]].as_long())
+
+            solved.append(row)
+
+        print_sudoku(solved)
+
+    else:
+        print("The puzzle is impossible.")
 
 
 
@@ -238,4 +343,37 @@ def coin_sum(total):
 
     Hint: You may need to run many related but slightly different model checks.
     """
-    # TODO: YOUR CODE HERE
+    s = Solver()
+
+    # coins cannot be negative
+    s.add(p >= 0, n >= 0, d >= 0, q >= 0, f >= 0, c >= 0)
+
+    # value constraint
+    s.add(p + 5*n + 10*d + 25*q + 50*f + 100*c == total)
+
+    count = 0
+
+    while s.check() == z3.sat:
+
+        model = s.model()
+        count += 1
+
+        # extract current solution
+        pv = model[p].as_long()
+        nv = model[n].as_long()
+        dv = model[d].as_long()
+        qv = model[q].as_long()
+        fv = model[f].as_long()
+        cv = model[c].as_long()
+
+        # block THIS exact solution
+        s.add(Or(
+            p != pv,
+            n != nv,
+            d != dv,
+            q != qv,
+            f != fv,
+            c != cv
+        ))
+
+    print("Number of ways to make", total, "cents:", count)
